@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  background-color: black;
+}
+
+body {
+  @apply antialiased;
+  overflow-x: hidden;
+  background-color: black;
+}
+
+/* Ultra-fast transitions */
+.section-transition {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms; /* Ultra-fast transitions */
+}
+
+/* Section spacing */
+section {
+  @apply relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Ensure smooth transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Hide scrollbar */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
