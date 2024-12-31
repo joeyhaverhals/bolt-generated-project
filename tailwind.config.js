@@ -8,10 +8,29 @@ export default {
     extend: {
       colors: {
         brand: {
-          orange: '#ff6b35',
-          amber: '#ffa41b',
+          orange: 'var(--color-brand-orange)',
+          amber: 'var(--color-brand-amber)',
         }
-      }
+      },
+      fontSize: {
+        'base': 'var(--font-size-base)',
+      },
+      spacing: {
+        'touch': 'var(--touch-target-size)',
+      },
+      screens: {
+        'xs': '320px',
+        'sm': '480px',
+        'md': '768px',
+        'lg': '1024px',
+        'xl': '1280px',
+      },
+      maxWidth: {
+        'content': '1280px',
+      },
+      minHeight: {
+        'touch': 'var(--touch-target-size)',
+      },
     },
   },
   plugins: [],
