@@ -1,28 +1,46 @@
-import { getResponsiveImageUrl, imageSizes, ResponsiveImageProps } from '../utils/imageLoader'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 
-export default function ResponsiveImage({
-  src,
-  alt,
+interface Props {
+  src: string
+  alt: string
+  className?: string
+  sizes?: string
+  priority?: boolean
+}
+
+export default function ResponsiveImage({ 
+  src, 
+  alt, 
+  className = '', 
   sizes = '100vw',
-  className = '',
-  priority = false,
-}: ResponsiveImageProps) {
-  const srcSet = Object.entries(imageSizes)
-    .map(([_, size]) => {
-      const url = getResponsiveImageUrl({ src, ...size });
-      return `${url} ${size.width}w`;
-    })
-    .join(', ');
+  priority = false 
+}: Props) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    const img = new Image()
+    img.src = src
+    img.onload = () => setIsLoaded(true)
+    img.onerror = () => setError(true)
+  }, [src])
+
+  if (error) {
+    return <div className={`bg-gray-200 ${className}`} />
+  }
 
   return (
-    <img
-      src={getResponsiveImageUrl({ src, ...imageSizes.medium })}
-      srcSet={srcSet}
-      sizes={sizes}
+    <motion.img
+      src={src}
       alt={alt}
       className={className}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: isLoaded ? 1 : 0 }}
+      transition={{ duration: 0.3 }}
       loading={priority ? 'eager' : 'lazy'}
-      decoding="async"
+      sizes={sizes}
+      onError={() => setError(true)}
     />
-  );
+  )
 }

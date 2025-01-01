@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
+import { User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '../supabase/client'
-import { Database } from '../supabase/types'
+import type { Database } from '../supabase/types'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -9,40 +9,37 @@ interface AuthState {
   user: User | null
   profile: Profile | null
   isLoading: boolean
-}
-
-interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, fullName: string) => Promise<void>
   signOut: () => Promise<void>
   updateProfile: (profile: Partial<Profile>) => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthState | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    isLoading: true,
-  })
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
       if (session?.user) {
         fetchProfile(session.user.id)
       }
-      setState(s => ({ ...s, isLoading: false }))
     })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null)
       if (session?.user) {
         await fetchProfile(session.user.id)
       } else {
-        setState(s => ({ ...s, user: null, profile: null }))
+        setProfile(null)
       }
+      setIsLoading(false)
     })
 
     return () => {
@@ -51,27 +48,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function fetchProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-    if (error) {
+      if (error) throw error
+      setProfile(data)
+    } catch (error) {
       console.error('Error fetching profile:', error)
-      return
     }
-
-    setState(s => ({ ...s, profile: data }))
   }
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     if (error) throw error
   }
 
   async function signUp(email: string, password: string, fullName: string) {
-    const { error } = await supabase.auth.signUp({
+    const { error: signUpError, data } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -80,7 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       },
     })
-    if (error) throw error
+
+    if (signUpError) throw signUpError
+
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('id', data.user.id)
+
+      if (profileError) throw profileError
+    }
   }
 
   async function signOut() {
@@ -88,28 +98,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
-  async function updateProfile(profile: Partial<Profile>) {
-    if (!state.user) return
+  async function updateProfile(updates: Partial<Profile>) {
+    if (!user) throw new Error('No user logged in')
 
     const { error } = await supabase
       .from('profiles')
-      .update(profile)
-      .eq('id', state.user.id)
+      .update(updates)
+      .eq('id', user.id)
 
     if (error) throw error
-    await fetchProfile(state.user.id)
+    await fetchProfile(user.id)
+  }
+
+  const value = {
+    user,
+    profile,
+    isLoading,
+    signIn,
+    signUp,
+    signOut,
+    updateProfile,
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        signIn,
-        signUp,
-        signOut,
-        updateProfile,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )

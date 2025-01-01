@@ -3,10 +3,10 @@ import { useAuth } from '../../lib/auth/AuthProvider'
 
 interface Props {
   children: React.ReactNode
-  requireAdmin?: boolean
+  allowedRoles?: string[]
 }
 
-export default function RequireAuth({ children, requireAdmin = false }: Props) {
+export default function RequireAuth({ children, allowedRoles }: Props) {
   const { user, profile, isLoading } = useAuth()
   const location = useLocation()
 
@@ -18,7 +18,7 @@ export default function RequireAuth({ children, requireAdmin = false }: Props) {
     return <Navigate to="/signin" state={{ from: location }} replace />
   }
 
-  if (requireAdmin && profile?.role !== 'admin') {
+  if (allowedRoles && (!profile?.role || !allowedRoles.includes(profile.role))) {
     return <Navigate to="/" replace />
   }
 
